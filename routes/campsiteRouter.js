@@ -1,54 +1,76 @@
 //will contain the code for handling the rest api endpoints for campsites and campsites/campsiteId
 const express = require('express');
-//to create a new express router. This gives us an object name that we can use with express routing methods
-const campsiteRouter = express.Router();
+const Campsite = require('../models/campsite'); //allows us to use campsite model exported from that module
+const campsiteRouter = express.Router(); //to create a new express router. This gives us an object name that we can use with express routing methods
 
 //handle the routing part. 
 campsiteRouter.route('/')
-
-//a routing method that is a catchall for all http verbs - use to set properties on response object that we will use as defaults for the path (so we don't need repeats individually)
-//format is app.all('path',callback method)
-.all((req, res, next) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain');  //send back plain text in response body
-  next(); //passes control of the app routing to the next RELEVANT routing method after this one
+.get((req, res, next) => { 
+  Campsite.find()
+  .then(campsites => {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(campsites);
+  })   
+  .catch(err => next(err)); //will pass off error to overall error handler for overall express app
 })
-.get((req, res) => {     //don't need next bc not passing any more routings after this
-  //response status code and headers already set by app.all method
-  res.end('Will send all the campsites to you');
-})
-.post((req, res) => {    //post requests typically cary some info (usually json format)
-  //this is why the express.json file is imporant!
-  res.end(`Will add the campsite: ${req.body.name} with description: ${req.body.description}`);
+.post((req, res, next) => { 
+  Campsite.create(req.body) //create new campsite doc and save it to mongodb server
+  .then(campsite => {
+    console.log('Campsite Created', campsite);
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(campsite); //sends info about posted info to client
+  })
+  .catch(err => next(err));
 })
 .put((req, res) => {
-  res.statusCode = 403;   //code when operation is not supported
+  res.statusCode = 403;  
   res.end('PUT operation not supported on /campsties');
 })
-.delete((req, res) => {  //dangerous operation so don't want to just let anyone do it
-  res.end('Deleting all campsites');
+.delete((req, res, next) => {  //dangerous operation so don't want to just let anyone do it
+  Campsite.deleteMany()
+  .then(response => { //gives info about info deleted
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(response);
+  })
+  .catch(err => next(err));
 });
 
 campsiteRouter.route('/:campsiteId')
-.all((req, res, next) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain');  //send back plain text in response body
-  next();
-})
-.get((req, res) => {
-  res.end(`Will send details of the campsite: ${req.params.campsiteId} to you`);
+.get((req, res, next) => {
+  Campsite.findById(req.params.campsiteId) //id getting parsed by http request by what user typed in as id they wanted
+  .then(campsite => { 
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(campsite);
+  })
+  .catch(err => next(err));
 })
 .post((req, res) => {
   res.statusCode = 403;
   res.end(`POST operation not supported on /campsites/${req.params.campsiteId}`);
 })
-.put((req, res) => {
-  res.write(`Updating the campsite: ${req.params.campsiteId}\n`);
-  res.end(`Will update the campsite: ${req.body.name}
-        with description: ${req.body.description}`);
+.put((req, res, next) => {
+  Campsite.findByIdAndUpdate(req.params.campsiteId, { 
+    $set: req.body
+  }, {new: true })
+  .then(campsite => { 
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(campsite);
+  })
+  .catch(err => next(err));
 })
-.delete((req, res) => {
-  res.end(`Deleting campsite: ${req.params.campsiteId}`);
+.delete((req, res, next) => {
+  Campsite.findByIdAndDelete(req.params.campsiteId)
+  .then(response => { 
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(response);
+  })
+    .catch(err => next(err));
 });
   
 module.exports = campsiteRouter;
