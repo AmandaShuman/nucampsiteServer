@@ -12,7 +12,7 @@ campsiteRouter.route('/')
     res.setHeader('Content-Type', 'application/json');
     res.json(campsites);
   })   
-  .catch(err => next(err)); //will pass off error to overall error handler for overall express app
+  .catch(err => next(err)); //will pass off error to overall error handler for overall express app in app.js
 })
 .post((req, res, next) => { 
   Campsite.create(req.body) //create new campsite doc and save it to mongodb server
