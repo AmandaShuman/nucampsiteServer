@@ -35,6 +35,34 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+//make users authenticate before accessing the data by writing a custom middleware function called auth
+function auth(req, res, next) {
+  console.log(req.headers); //see what is in request authorization header
+  const authHeader = req.headers.authorization;
+  if (!authHeader) { //if user didn't put in username/password yet
+    const err = new Error('You are not authenticated!');
+    res.setHeader('WWW-Authenticate', 'Basic'); //let's client know server is requesting basic authentication
+    err.status = 401;
+    return next(err);
+  }
+
+  //if client responds to challenge and this time there is an authorization header - we can parse it and validate username & password
+  const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); //explain this as a challenge
+  const user = auth[0];
+  const pass = auth[1];
+  if (user === 'admin' && pass === 'password') {
+    return next(); //authorized
+  } else {
+    const err = new Error('You are not authenticated!');
+    res.setHeader('WWW-Authenticate', 'Basic'); 
+    err.status = 401;
+    return next(err);
+  }
+}
+
+app.use(auth); //how the auth function will be used
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
