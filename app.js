@@ -34,30 +34,40 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(cookieParser('12345-67890-09876-54321')); //using signed keys needs to have a secret key for parser which can be any string used to encrypt info and sign cookie sent from server to client
 
 //make users authenticate before accessing the data by writing a custom middleware function called auth
 function auth(req, res, next) {
-  console.log(req.headers); //see what is in request authorization header
-  const authHeader = req.headers.authorization;
-  if (!authHeader) { //if user didn't put in username/password yet
-    const err = new Error('You are not authenticated!');
-    res.setHeader('WWW-Authenticate', 'Basic'); //let's client know server is requesting basic authentication
-    err.status = 401;
-    return next(err);
-  }
+  if (!req.signedCookies.user) { //provided by cookieParser, but we will add the user part
+    const authHeader = req.headers.authorization;
+    if (!authHeader) { //if user didn't put in username/password yet
+      const err = new Error('You are not authenticated!');
+      res.setHeader('WWW-Authenticate', 'Basic'); //let's client know server is requesting basic authentication
+      err.status = 401;
+      return next(err);
+    }
 
-  //if client responds to challenge and this time there is an authorization header - we can parse it and validate username & password
-  const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); //explain this as a challenge
-  const user = auth[0];
-  const pass = auth[1];
-  if (user === 'admin' && pass === 'password') {
-    return next(); //authorized
-  } else {
-    const err = new Error('You are not authenticated!');
-    res.setHeader('WWW-Authenticate', 'Basic'); 
-    err.status = 401;
-    return next(err);
+    //if client responds to challenge and this time there is an authorization header - we can parse it and validate username & password
+    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); //explain this as a challenge
+    const user = auth[0];
+    const pass = auth[1];
+    if (user === 'admin' && pass === 'password') {
+      res.cookie('user', 'admin', { signed: true }); //first pass in the name we want to use for cookie user, then value to store in the name property, 3rd arg. is optional for config. values
+      return next(); //authorized
+    } else {
+      const err = new Error('You are not authenticated!');
+      res.setHeader('WWW-Authenticate', 'Basic');
+      err.status = 401;
+      return next(err);
+    }
+  } else { //if there is a signed cookie in user request
+    if (req.signedCookies.user === 'admin') {
+      return next(); //pass client onto next middleware function
+    } else {
+      const err = new Error('You are not authenticated!');
+      err.status = 401;
+      return next(err);
+    }
   }
 }
 
@@ -72,12 +82,12 @@ app.use('/promotions', promotionRouter);
 app.use('/partners', partnerRouter);
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
   next(createError(404));
 });
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use(function (err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
