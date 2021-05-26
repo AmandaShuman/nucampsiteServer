@@ -3,6 +3,8 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const session = require('express-session');
+const FileStore = require('session-file-store')(session); //require function is returning another function as return value and then using second parameter list in that function as session
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -34,25 +36,33 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser('12345-67890-09876-54321')); //using signed keys needs to have a secret key for parser which can be any string used to encrypt info and sign cookie sent from server to client
+//app.use(cookieParser('12345-67890-09876-54321'));
 
-//make users authenticate before accessing the data by writing a custom middleware function called auth
+app.use(session({
+  name: 'session-id',
+  secret: '12345-67890-09876-54321',
+  saveUninitialized: false, //when new session is created but no updates are made to it then at end of request it won't get saved and no cookie will be sent to client (reduces extra cookies)
+  resave: false, //keeps session active while user is making requests
+  store: new FileStore()
+}));
+
 function auth(req, res, next) {
-  if (!req.signedCookies.user) { //provided by cookieParser, but we will add the user part
+  console.log(req.session);
+
+  if (!req.session.user) { 
     const authHeader = req.headers.authorization;
-    if (!authHeader) { //if user didn't put in username/password yet
+    if (!authHeader) { 
       const err = new Error('You are not authenticated!');
-      res.setHeader('WWW-Authenticate', 'Basic'); //let's client know server is requesting basic authentication
+      res.setHeader('WWW-Authenticate', 'Basic'); 
       err.status = 401;
       return next(err);
     }
 
-    //if client responds to challenge and this time there is an authorization header - we can parse it and validate username & password
-    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); //explain this as a challenge
+    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
     const user = auth[0];
     const pass = auth[1];
     if (user === 'admin' && pass === 'password') {
-      res.cookie('user', 'admin', { signed: true }); //first pass in the name we want to use for cookie user, then value to store in the name property, 3rd arg. is optional for config. values
+      req.session.user = 'admin'; //saving to session that username is admin
       return next(); //authorized
     } else {
       const err = new Error('You are not authenticated!');
@@ -61,7 +71,7 @@ function auth(req, res, next) {
       return next(err);
     }
   } else { //if there is a signed cookie in user request
-    if (req.signedCookies.user === 'admin') {
+    if (req.session.user === 'admin') {
       return next(); //pass client onto next middleware function
     } else {
       const err = new Error('You are not authenticated!');
