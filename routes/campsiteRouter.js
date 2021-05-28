@@ -1,11 +1,12 @@
 //will contain the code for handling the rest api endpoints for campsites and campsites/campsiteId
 const express = require('express');
-const Campsite = require('../models/campsite'); //allows us to use campsite model exported from that module
-const campsiteRouter = express.Router(); //to create a new express router. This gives us an object name that we can use with express routing methods
+const Campsite = require('../models/campsite'); 
+const campsiteRouter = express.Router(); 
+const authenticate = require('../authenticate');
 
 //handle the routing part. 
 campsiteRouter.route('/')
-.get((req, res, next) => { 
+.get((req, res, next) => { //don't need to verify get request because it is a read-only operation
   Campsite.find()
   .then(campsites => {
     res.statusCode = 200;
@@ -14,7 +15,7 @@ campsiteRouter.route('/')
   })   
   .catch(err => next(err)); //will pass off error to overall error handler for overall express app in app.js
 })
-.post((req, res, next) => { 
+.post(authenticate.verifyUser, (req, res, next) => { 
   Campsite.create(req.body) //create new campsite doc and save it to mongodb server
   .then(campsite => {
     console.log('Campsite Created', campsite);
@@ -24,11 +25,11 @@ campsiteRouter.route('/')
   })
   .catch(err => next(err));
 })
-.put((req, res) => {
+  .put(authenticate.verifyUser, (req, res) => {
   res.statusCode = 403;  
   res.end('PUT operation not supported on /campsties');
 })
-.delete((req, res, next) => {  //dangerous operation so don't want to just let anyone do it
+  .delete(authenticate.verifyUser, (req, res, next) => {  //dangerous operation so don't want to just let anyone do it
   Campsite.deleteMany()
   .then(response => { //gives info about info deleted
     res.statusCode = 200;
@@ -48,11 +49,11 @@ campsiteRouter.route('/:campsiteId')
   })
   .catch(err => next(err));
 })
-.post((req, res) => {
+  .post(authenticate.verifyUser, (req, res) => {
   res.statusCode = 403;
   res.end(`POST operation not supported on /campsites/${req.params.campsiteId}`);
 })
-.put((req, res, next) => {
+  .put(authenticate.verifyUser, (req, res, next) => {
   Campsite.findByIdAndUpdate(req.params.campsiteId, { 
     $set: req.body
   }, {new: true })
@@ -63,7 +64,7 @@ campsiteRouter.route('/:campsiteId')
   })
   .catch(err => next(err));
 })
-.delete((req, res, next) => {
+  .delete(authenticate.verifyUser, (req, res, next) => {
   Campsite.findByIdAndDelete(req.params.campsiteId)
   .then(response => { 
     res.statusCode = 200;
@@ -89,7 +90,7 @@ campsiteRouter.route('/:campsiteId/comments')
   })   
   .catch(err => next(err));
 })
-.post((req, res, next) => { 
+  .post(authenticate.verifyUser, (req, res, next) => {
   Campsite.findById(req.params.campsiteId) 
   .then(campsite => {
     if (campsite) {
@@ -109,11 +110,11 @@ campsiteRouter.route('/:campsiteId/comments')
   })   
   .catch(err => next(err));
 })
-.put((req, res) => {
+  .put(authenticate.verifyUser, (req, res) => {
   res.statusCode = 403;  
   res.end(`PUT operation not supported on /campsties/${req.params.campsiteId}/comments`);
 })
-.delete((req, res, next) => {  
+  .delete(authenticate.verifyUser, (req, res, next) => {
   Campsite.findById(req.params.campsiteId)
   .then(campsite => {
     if (campsite) {
@@ -157,11 +158,11 @@ campsiteRouter.route('/:campsiteId/comments/:commentId') //will handle requests 
       })
       .catch(err => next(err));
   })
-  .post((req, res) => {
+  .post(authenticate.verifyUser, (req, res) => {
     res.statusCode = 403;
     res.end(`POST operation not supported on /campsites/${req.params.campsiteId}/comments/${req.params.commentId}`);
   })
-  .put((req, res, next) => { //we want to update existing data - don't want to update author, cannot update id or timestamp fields, so only want to update rating and comment text fields
+  .put(authenticate.verifyUser, (req, res, next) => { //we want to update existing data - don't want to update author, cannot update id or timestamp fields, so only want to update rating and comment text fields
     Campsite.findById(req.params.campsiteId)
       .then(campsite => {
         if (campsite && campsite.comments.id(req.params.commentId)) { 
@@ -190,7 +191,7 @@ campsiteRouter.route('/:campsiteId/comments/:commentId') //will handle requests 
       })
       .catch(err => next(err));
   })
-  .delete((req, res, next) => {
+  .delete(authenticate.verifyUser, (req, res, next) => {
     Campsite.findById(req.params.campsiteId)
       .then(campsite => {
         if (campsite && campsite.comments.id(req.params.commentId)) {

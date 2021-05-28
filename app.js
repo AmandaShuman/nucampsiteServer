@@ -1,12 +1,9 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
-var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-const session = require('express-session');
-const FileStore = require('session-file-store')(session); //require function is returning another function as return value and then using second parameter list in that function as session
 const passport = require('passport');
-const authenticate = require('./authenticate');
+const config = require('./config');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -17,7 +14,7 @@ const partnerRouter = require('./routes/partnerRouter');
 //establishing the connection to the mongodb server
 const mongoose = require('mongoose');
 
-const url = 'mongodb://localhost:27017/campsite';
+const url = config.mongoUrl;
 const connect = mongoose.connect(url, { //check node-mongoose for notes
   useCreateIndex: true,
   useFindAndModify: false,
@@ -40,34 +37,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 //app.use(cookieParser('12345-67890-09876-54321'));
 
-app.use(session({
-  name: 'session-id',
-  secret: '12345-67890-09876-54321',
-  saveUninitialized: false, //when new session is created but no updates are made to it then at end of request it won't get saved and no cookie will be sent to client (reduces extra cookies)
-  resave: false, //keeps session active while user is making requests
-  store: new FileStore()
-}));
-
-//only necessary if using session-based authentication - passport checks incoming requests for current session
 app.use(passport.initialize());
-app.use(passport.session());
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-function auth(req, res, next) {
-  console.log(req.user);
-
-  if (!req.user) { 
-    const err = new Error('You are not authenticated!');
-    err.status = 401;
-    return next(err);
-  } else { 
-      return next();
-  }
-}
-
-app.use(auth); //how the auth function will be used
+//no longer protecting access to static files in public folder
 
 app.use(express.static(path.join(__dirname, 'public')));
 

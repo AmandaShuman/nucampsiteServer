@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/user');
 const passport = require('passport');
+const authenticate = require('../authenticate');
 
 const router = express.Router();
 
@@ -31,9 +32,10 @@ router.post('/signup', (req, res) => { //will allow new user to sign up on websi
 
 router.post('/login', passport.authenticate('local'), (req, res) => {
   //passport.authentication will now handle logging in user for us from now on
+  const token = authenticate.getToken({_id: req.user._id}); //issue token to user
   res.statusCode = 200;
   res.setHeader('Content-Type', 'application/json');
-  res.json({success: true, status: 'You are successfully logged in!'});
+  res.json({success: true, token: token, status: 'You are successfully logged in!'});
 });
 
 //handles logging out
