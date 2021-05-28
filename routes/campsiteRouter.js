@@ -8,6 +8,7 @@ const authenticate = require('../authenticate');
 campsiteRouter.route('/')
 .get((req, res, next) => { //don't need to verify get request because it is a read-only operation
   Campsite.find()
+  .populate('comments.author') //tells doc when campsites' docs are retreived to populate the author field of comments subdoc by matching object ids
   .then(campsites => {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
@@ -42,6 +43,7 @@ campsiteRouter.route('/')
 campsiteRouter.route('/:campsiteId')
 .get((req, res, next) => {
   Campsite.findById(req.params.campsiteId) //id getting parsed by http request by what user typed in as id they wanted
+  .populate('comments.author')
   .then(campsite => { 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
@@ -77,6 +79,7 @@ campsiteRouter.route('/:campsiteId')
 campsiteRouter.route('/:campsiteId/comments')
 .get((req, res, next) => { 
   Campsite.findById(req.params.campsiteId) //client looking for a single campsite's comments now using findById
+  .populate('comments.author')
   .then(campsite => {
     if (campsite) {
       res.statusCode = 200;
@@ -94,6 +97,7 @@ campsiteRouter.route('/:campsiteId/comments')
   Campsite.findById(req.params.campsiteId) 
   .then(campsite => {
     if (campsite) {
+      req.body.author = req.user._id; //when comment is saved it will have id of user who commented
       campsite.comments.push(req.body); //use array method to push new comment into comments arrray. Assuming request body has comment in it and express.json has already formatted it so we can push it in. Only changes comments array in app memory andn not subcomments doc in mongodb
       campsite.save() //saves the new comment to mongodb database. Not a static method b/c method being performed on this instance the doc itself so little c for campsite
       .then(campsite => {
@@ -141,6 +145,7 @@ campsiteRouter.route('/:campsiteId/comments')
 campsiteRouter.route('/:campsiteId/comments/:commentId') //will handle requests of a specific comment id of a specific campsite id
   .get((req, res, next) => {
     Campsite.findById(req.params.campsiteId) 
+      .populate('comments.author')
       .then(campsite => {
         if (campsite && campsite.comments.id(req.params.commentId)) { //will retrieve the value of the comment subdoc with id passed in
           res.statusCode = 200;

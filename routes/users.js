@@ -14,16 +14,30 @@ router.post('/signup', (req, res) => { //will allow new user to sign up on websi
   User.register(
     new User({username: req.body.username}), //1st arg is new user creation
     req.body.password, //2nd arg is password directly from client
-    err => { 
+    (err, user) => { 
       if (err) { //internal server error
         res.statusCode = 500; 
         res.setHeader('Content-Type', 'application/json');
         res.json({err: err}); //will provide info about error
       } else { //will ensure registration was successful
-        passport.authenticate('local')(req, res, () => {
-          res.statusCode = 200;
-          res.setHeader('Content-Type', 'application/json');
-          res.json({success: true, status: 'Registration Successful!'}); //takes care of sending response so no need for ending it
+        if (req.body.firstname) {
+          user.firstname = req.body.firstname;
+        }
+        if (req.body.lastname) {
+          user.lastname = req.body.lastname;
+        }
+        user.save(err => {
+          if (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.json({err: err});
+            return;
+          }
+          passport.authenticate('local')(req, res, () => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json({success: true, status: 'Registration Successful!'}); //takes care of sending response so no need for ending it
+          });
         }); 
       }
     }

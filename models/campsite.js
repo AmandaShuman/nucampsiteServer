@@ -17,8 +17,8 @@ const commentSchema = new Schema({ //for storing commnts about a campsite
     required: true
   },
   author: {
-    type: String,
-    required: true
+    type: mongoose.Schema.Types.ObjectId, //stores a reference to a user doc through userdoc id
+    ref: 'User'
   }
 }, {
   timestamps: true
