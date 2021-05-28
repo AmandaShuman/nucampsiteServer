@@ -5,6 +5,8 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session); //require function is returning another function as return value and then using second parameter list in that function as session
+const passport = require('passport');
+const authenticate = require('./authenticate');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -46,24 +48,22 @@ app.use(session({
   store: new FileStore()
 }));
 
+//only necessary if using session-based authentication - passport checks incoming requests for current session
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
 function auth(req, res, next) {
-  console.log(req.session);
+  console.log(req.user);
 
-  if (!req.session.user) { 
+  if (!req.user) { 
     const err = new Error('You are not authenticated!');
     err.status = 401;
     return next(err);
-  } else { //if there is a signed cookie in user request
-    if (req.session.user === 'authenticated') {
-      return next(); //pass client onto next middleware function
-    } else {
-      const err = new Error('You are not authenticated!');
-      err.status = 401;
-      return next(err);
-    }
+  } else { 
+      return next();
   }
 }
 
