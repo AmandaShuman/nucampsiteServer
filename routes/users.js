@@ -6,8 +6,14 @@ const authenticate = require('../authenticate');
 const router = express.Router();
 
 /* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
+router.get('/', authenticate.verifyUser, authenticate.verifyAdmin, function(req, res, next) { //need to verify first user, then whether user is admin or not
+  User.find() //similar to Get method in partnerRouter
+  .then(admins => {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(admins);
+  })
+  .catch(err => next(err));
 });
 
 router.post('/signup', (req, res) => { //will allow new user to sign up on website
